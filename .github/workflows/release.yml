@@ -47,7 +47,10 @@ jobs:
           bun install --frozen-lockfile
           bun run --cwd extentions/obsidian-startime build
 
-          cp extentions/obsidian-startime/main.js ../main.js
+          cp extentions/obsidian-startime/dist/main.js ../main.js
+          if [ -f extentions/obsidian-startime/dist/styles.css ]; then
+            cp extentions/obsidian-startime/dist/styles.css ../styles.css
+          fi
 
       - name: Check for optional styles
         id: styles
