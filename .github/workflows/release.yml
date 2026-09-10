@@ -1,0 +1,100 @@
+name: Release Obsidian plugin
+
+on:
+  push:
+    tags:
+      - "*"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+
+    steps:
+      - name: Check out writable plugin branch
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          fetch-depth: 0
+
+      - name: Check out upstream plugin manifest
+        uses: actions/checkout@v6
+        with:
+          repository: StarlightV-org/startime
+          ref: obsidian-startime
+          path: upstream-plugin
+          sparse-checkout: |
+            extentions/obsidian-startime
+
+      - name: Sync manifest version from upstream
+        id: manifest
+        run: |
+          remote_version="$(node -p "require('./upstream-plugin/extentions/obsidian-startime/manifest.json').version")"
+          local_version="$(node -p "require('./manifest.json').version")"
+
+          if [ "$remote_version" = "$local_version" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          node -e "
+            const fs = require('node:fs');
+            const path = 'manifest.json';
+            const manifest = JSON.parse(fs.readFileSync(path, 'utf8'));
+            manifest.version = process.argv[1];
+            fs.writeFileSync(path, JSON.stringify(manifest, null, 2) + '\n');
+          " "$remote_version"
+
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+          echo "version=$remote_version" >> "$GITHUB_OUTPUT"
+
+      - name: Commit synchronized manifest version
+        if: steps.manifest.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add manifest.json
+          git commit -m "chore: Sync plugin manifest version"
+          git push origin "${{ github.event.repository.default_branch }}"
+
+      - name: Use Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: "npm"
+
+      - name: Build plugin
+        run: |
+          npm ci
+          npm run build
+
+      - name: Check for optional styles
+        id: styles
+        run: |
+          [ -f styles.css ] && echo "exists=true" >> "$GITHUB_OUTPUT" || echo "exists=false" >> "$GITHUB_OUTPUT"
+
+      - name: Create zip package
+        run: |
+          zip obsidian-codetime.zip main.js manifest.json ${{ steps.styles.outputs.exists == 'true' && 'styles.css' || '' }}
+
+      - name: Attest build provenance
+        uses: actions/attest@v4
+        with:
+          subject-path: |
+            main.js
+            obsidian-codetime.zip
+            ${{ steps.styles.outputs.exists == 'true' && 'styles.css' || '' }}
+
+      - name: Create release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="${GITHUB_REF#refs/tags/}"
+
+          gh release create "$tag" \
+            --title="$tag" \
+            --draft \
+            main.js manifest.json obsidian-codetime.zip ${{ steps.styles.outputs.exists == 'true' && 'styles.css' || '' }}
