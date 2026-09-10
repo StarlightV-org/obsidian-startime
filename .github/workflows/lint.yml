@@ -23,6 +23,9 @@ jobs:
           sparse-checkout: |
             package.json
             bun.lock
+            extentions/obsidian-startime/**
+            packages/print/**
+            tsconfig.base.json
           sparse-checkout-cone-mode: false
 
       - name: Use Node.js
@@ -37,9 +40,6 @@ jobs:
 
       - name: Install workspace dependencies
         run: |
-          mkdir -p workspace/extentions/obsidian-startime
-          git archive HEAD | tar -x -C workspace/extentions/obsidian-startime
-
           cd workspace
           bun install --frozen-lockfile
 
