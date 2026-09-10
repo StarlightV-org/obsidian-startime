@@ -14,18 +14,40 @@ jobs:
       attestations: write
 
     steps:
-      - uses: actions/checkout@v6
+      - name: Check out plugin release source
+        uses: actions/checkout@v6
+
+      - name: Check out Bun workspace lockfiles
+        uses: actions/checkout@v6
+        with:
+          repository: StarlightV-org/startime
+          ref: obsidian-startime
+          path: workspace
+          sparse-checkout: |
+            package.json
+            bun.lock
+          sparse-checkout-cone-mode: false
 
       - name: Use Node.js
         uses: actions/setup-node@v6
         with:
           node-version: 24
-          cache: "npm"
+
+      - name: Use Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.0
 
       - name: Build plugin
         run: |
-          npm ci
-          npm run build
+          mkdir -p workspace/extentions/obsidian-startime
+          git archive HEAD | tar -x -C workspace/extentions/obsidian-startime
+
+          cd workspace
+          bun install --frozen-lockfile
+          bun --cwd extentions/obsidian-startime run build
+
+          cp extentions/obsidian-startime/main.js ../main.js
 
       - name: Check for optional styles
         id: styles
