@@ -45,7 +45,7 @@ jobs:
 
           cd workspace
           bun install --frozen-lockfile
-          bun --cwd extentions/obsidian-startime run build
+          bun run --cwd extentions/obsidian-startime build
 
           cp extentions/obsidian-startime/main.js ../main.js
 
