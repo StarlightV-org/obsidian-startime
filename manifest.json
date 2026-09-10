@@ -1,7 +1,7 @@
 {
 	"id": "starlightv-startime",
 	"name": "StarTime",
-	"version": "1.0.6",
+	"version": "1.0.7",
 	"minAppVersion": "1.13.0",
 	"description": "Track time spent writing with your StarTime account.",
 	"author": "StarlightV-Org",
